@@ -1,0 +1,78 @@
+import numpy as np
+
+# Parámetros
+T = 10  # Tiempo máximo de simulación
+s = 0  # Tiempo inicial
+lambda_constante = 5  # Tasa de llegada para ciertos periodos
+lambda_max = 20  # Tasa máxima
+n_clientes = 0  # Número inicial de clientes en la cola
+
+# Función lambda(t) #llegadas en dif intervalos 
+def lambda_t(t):
+    if 0 <= t < 3:
+        return 5 + 5 * t  # Lambda en el intervalo //0 <= t < 3
+    elif 3 <= t < 5:
+        return 20  # Lambda en el intervalo //3 <= t < 5
+    elif 5 <= t < 9:
+        return 20 - 2 * (t - 5)  # Lambda en el intervalo //5 <= t < 9
+    else:
+        return 0  # No hay llegadas después de t = 9 ,max 10
+
+# simulamos sig llegada 
+def simular_llegada(t_actual):
+    while True:
+        # Simular U1 y calcular el nuevo tiempo t
+        U1 = np.random.uniform(0, 1)
+        t_actual -= np.log(U1) / lambda_max
+
+        # Verificar si se sobrepasa el tiempo máximo
+        if t_actual > T:
+            return None  # Parar si el tiempo excede el máximo
+
+        # Simular U2 para aceptar o rechazar el tiempo propuesto
+        U2 = np.random.uniform(0, 1)
+        if U2 <= lambda_t(t_actual) / lambda_max:
+            return t_actual  # Aceptar la llegada si se cumple 
+
+# simula 1 cola con 1 servidor 
+
+def simular_sistema():
+    t_actual = s  #  tiempo actual
+    t_proxima_llegada = simular_llegada(t_actual)  #  primera llegada
+    tiempo_servicio = float('inf')  # infinito antes primer cliente
+
+    while True:
+        # Caso 1: Procesar una nueva llegada
+        if t_proxima_llegada <= tiempo_servicio and t_proxima_llegada <= T:
+            t_actual = t_proxima_llegada
+            n_clientes += 1  # Un cliente llega a la cola
+
+            print(f"Llegada en t = {t_actual:.2f}, clientes en cola: {n_clientes}")
+
+            # Simular el siguiente tiempo de llegada
+            t_proxima_llegada = simular_llegada(t_actual)
+
+            # Si el servidor está libre, atender al cliente
+            if n_clientes == 1:
+                tiempo_servicio = t_actual + np.random.exponential(1)  # Generar tiempo de servicio es exp 
+
+        # Caso 2: Procesar la finalización del servicio
+        elif tiempo_servicio <= t_proxima_llegada and tiempo_servicio <= T:
+            t_actual = tiempo_servicio
+            n_clientes -= 1  # cliente  se retira 
+
+            print(f"Salida en t = {t_actual:.2f}, clientes en cola: {n_clientes}")
+
+            # Si aún hay clientes en la cola, atender al siguiente
+            if n_clientes > 0:
+                tiempo_servicio = t_actual + np.random.exponential(1)
+            else:
+                tiempo_servicio = float('inf')  # Si no hay clientes, el servidor queda libre
+
+        # Si el tiempo actual supera el tiempo máximo, parar la simulación
+        if t_proxima_llegada is None and n_clientes == 0:
+            break
+
+simular_sistema()
+
+
