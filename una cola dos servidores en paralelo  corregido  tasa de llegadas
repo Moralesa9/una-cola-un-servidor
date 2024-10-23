@@ -1,0 +1,114 @@
+import numpy as np
+
+lambda_max = 5  # Tasa máxima de llegada
+TIEMPO_MAX = 100  # Tiempo máximo de simulación
+t = 0  # Tiempo actual
+G1 = 0  #  clientes atendidos por el servidor 1
+G2 = 0  #  clientes atendidos por el servidor 2
+NLL = 0  #  llegadas hasta el tiempo t
+SS = []  # Estado del sistema, inicialmente sin clientes
+LLEGADAS = []  # tiempos de llegada
+
+# Función lambda_t(t) que describe la tasa de llegadas en función del tiempo
+def lambda_t(t):
+    return 2 + 0.5 * np.sin(t)
+
+
+
+
+# Simulación del siguiente instante de llegada
+def simular_llegada(t_actual):
+    while True:
+        U1 = np.random.uniform(0, 1)
+        t_actual -= np.log(U1) / lambda_max
+
+        if t_actual > TIEMPO_MAX:
+            return None
+
+        U2 = np.random.uniform(0, 1)
+        if U2 <= lambda_t(t_actual) / lambda_max:
+            return t_actual
+
+# Generar tiempos de servicio
+def generar_tiempo_servicio():
+    return np.random.exponential(1.0)  # Distribución exponencial para el tiempo de servicio
+
+# Función para manejar la llegada de un cliente
+def llegada_cliente():
+    global t, NLL, SS, LLEGADAS
+    NLL += 1
+    t_llegada = simular_llegada(t)
+    
+    if t_llegada is not None:
+        LLEGADAS.append(t_llegada)
+        LLEGADAS.sort()
+    
+    # Verificamos el estado de los servidores y asignamos al cliente
+    if SS[0] == 0:  # Si no hay clientes en el sistema
+        SS[0] = 1  # Ahora hay un cliente en el sistema
+        return generar_tiempo_servicio()
+    elif SS[0] == 1:  # Si un cliente está siendo atendido en S1, se asigna a S2
+        SS.append(1)  # Agregamos cliente al servidor 2
+        return generar_tiempo_servicio()
+    else:  # Ambos servidores están ocupados, el cliente va a la cola
+        SS.append(1)  # Cliente en cola
+        return None
+
+# Proceso de salida del servidor 1
+def salida_cliente_1():
+    global G1, SS
+    G1 += 1
+    if SS[0] > 0:  # Si hay clientes
+        SS[0] -= 1  # Disminuimos el número de clientes en el sistema
+    if len(SS) > 1:
+        SS.pop(1)  # Eliminar el cliente atendido por el servidor 1
+    return generar_tiempo_servicio()
+
+# Proceso de salida del servidor 2
+def salida_cliente_2():
+    global G2, SS
+    G2 += 1
+    if SS[0] > 0:
+        SS[0] -= 1  # Disminuir el número de clientes en el sistema
+    if len(SS) > 2:
+        SS.pop(2)  # Eliminar el cliente atendido por el servidor 2
+    return generar_tiempo_servicio()
+
+# Simulación principal basada en el algoritmo proporcionado
+def simulacion():
+    global t, LLEGADAS, SS
+    t = 0
+    t_LLEGADA = simular_llegada(t)
+    t1 = t2 = float('inf')  # Inicializamos los tiempos de servicio
+
+    while t < TIEMPO_MAX:
+        if LLEGADAS:
+            t_LLEGADA = LLEGADAS[0]
+        else:
+            t_LLEGADA = None
+        
+        # Caso 1: Procesar la llegada de un cliente
+        if t_LLEGADA is not None and (t_LLEGADA <= t1 and t_LLEGADA <= t2):
+            t = t_LLEGADA
+            if LLEGADAS:
+                LLEGADAS.pop(0)  # Eliminamos la llegada procesada
+            t_LLEGADA = llegada_cliente()
+
+        # Caso 2: Procesar salida de cliente de servidor 1
+        elif t1 <= (t_LLEGADA if t_LLEGADA is not None else float('inf')) and t1 <= t2:
+            t = t1
+            t1 = salida_cliente_1()
+
+        # Caso 3: Procesar salida de cliente de servidor 2
+        elif t2 <= (t_LLEGADA if t_LLEGADA is not None else float('inf')) and t2 <= t1:
+            t = t2
+            t2 = salida_cliente_2()
+
+        # Imprimir el estado del sistema en cada paso
+        print(f"Tiempo: {t:.2f}, Clientes en el sistema: {len(SS)}, Clientes atendidos por S1: {G1}, Clientes atendidos por S2: {G2}")
+
+simulacion()
+
+
+
+
