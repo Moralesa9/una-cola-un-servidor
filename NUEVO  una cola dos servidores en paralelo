@@ -1,0 +1,87 @@
+import numpy as np
+
+l_l = 2.0  # Tasa de llegada promedio (lambda) 
+service_time_mean = 1.0  # Tiempo promedio de servicio
+TIEMPO_MAX = 100  # Tiempo máximo de simulación
+
+# Variables globales
+t = 0  # Tiempo actual
+G1 = 0  #  clientes atendidos por el servidor 1
+G2 = 0  #  clientes atendidos por el servidor 2
+clientes_en_servicio = []  
+
+# Simulación del siguiente instante de llegada
+def simular_llegada(t_actual):
+    U = np.random.uniform(0, 1) 
+    tiempo_llegada = t_actual - (1/l_l) * np.log(U)  # Calcular el tiempo de llegada
+    return tiempo_llegada
+
+
+def generar_tiempo_servicio():
+    return np.random.exponential(service_time_mean)  # Distribución exponencial para el tiempo de servicio salida 
+
+
+def llegada_cliente():
+    global t, clientes_en_servicio
+    tiempo_llegada = simular_llegada(t)
+    
+    if tiempo_llegada > 0:  
+        if len(clientes_en_servicio) < 2:  # Si hay espacio en los servidores
+            tiempo_servicio = generar_tiempo_servicio()
+            clientes_en_servicio.append(tiempo_servicio)  # +1
+            return tiempo_servicio
+    return None
+
+
+#  servidor 1
+def salida_cliente_1():
+    global G1, clientes_en_servicio
+    G1 += 1
+    if clientes_en_servicio:
+        clientes_en_servicio.pop(0)  # pop// fin cliente 
+    return generar_tiempo_servicio() if len(clientes_en_servicio) > 0 else float('inf')
+
+
+#  servidor 2
+def salida_cliente_2():
+    global G2, clientes_en_servicio
+    G2 += 1
+    if len(clientes_en_servicio) > 1:
+        clientes_en_servicio.pop(1)  # fin cliente 
+    return generar_tiempo_servicio() if len(clientes_en_servicio) > 1 else float('inf')
+
+
+def simulacion():
+    global t
+    t = 0
+    t1 = t2 = float('inf')  # infinito 
+
+    while t < TIEMPO_MAX:
+        # Generar llegada de un nuevo cliente
+        if t < TIEMPO_MAX:
+            tiempo_servicio = llegada_cliente()
+            if tiempo_servicio is not None:
+                # genera  tiempos de salida para los servidores
+                if len(clientes_en_servicio) == 1:
+                    t1 = t + clientes_en_servicio[0]  # Tiempo de salida para el servidor 1
+                elif len(clientes_en_servicio) == 2:
+                    t1 = t + clientes_en_servicio[0]  # Tiempo de salida para el servidor 1
+                    t2 = t + clientes_en_servicio[1]  # Tiempo de salida para el servidor 2
+                else:
+                    t1 = t2 = float('inf')
+
+        # Caso 2:  salida de cliente de servidor 1
+        if t1 <= t2:
+            t = t1
+            t1 = salida_cliente_1()
+
+        # Caso 3:  salida de cliente de servidor 2
+        elif t2 < t1:
+            t = t2
+            t2 = salida_cliente_2()
+
+        print(f"Tiempo: {t:.2f}, Clientes en el sistema: {len(clientes_en_servicio)}, Clientes atendidos por S1: {G1}, Clientes atendidos por S2: {G2}")
+
+simulacion()
+
+
